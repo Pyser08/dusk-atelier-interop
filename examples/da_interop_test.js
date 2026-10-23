@@ -7,7 +7,8 @@
  * DA Interop v1 — B 플러그인용 스니펫
  * https://github.com/Pyser08/dusk-atelier-interop
  *
- * 이 블록을 플러그인 코드 맨 아래에 붙여 넣으세요.
+ * 이 블록을 플러그인 코드에 붙여 넣고, 그 아래에서 registerInterop({...})을 부르세요.
+ * (registerInterop을 부르는 코드보다 반드시 위에 있어야 합니다)
  * 공식 플러그인 API(pluginStorage)만 사용합니다.
  *
  * 저장 위치 (pluginStorage, 모든 플러그인 공용)
