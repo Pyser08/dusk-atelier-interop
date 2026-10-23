@@ -20,7 +20,7 @@ const registerInterop = (() => {
   const REG = 'da_interop:reg:';
   const PATCH = 'da_interop:patch:';
   const POLL_MS = 3000;
-  const R = globalThis.risuai ?? globalThis.Risuai;
+  const R = globalThis.Risuai ?? globalThis.risuai ?? globalThis.__pluginApis__;
 
   const clone = (v) => JSON.parse(JSON.stringify(v ?? null));
   // pluginStorage는 모든 플러그인이 함께 쓰는 저장소라 키 하나에 자기 항목만 둔다

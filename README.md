@@ -41,8 +41,22 @@ registerInterop({
 | `select` | string | `options: [{value, label}]` |
 | `text` / `textarea` | string | |
 | `color` | `#rrggbb` | |
+| `multiselect` | 값 배열 | `options: [{value, label}]` |
+| `list` | 배열 | `itemFields: [필드…]`(객체 목록) 또는 `item: {type, …}`(값 목록), `itemLabel`, `addable`, `removable`, `sortable`, `max` |
+| `json` | 아무 JSON | `rows` |
 
-공통: `key`, `label`, `default`, `group`, `description`.
+공통: `key`, `label`, `default`, `group`, `description`, `readonly`(보여 주기만 하고 보내지 않음).
+
+`multiselect`·`list`·`json`은 Dusk Atelier 1.4.4 이상에서 표시됩니다. `list` 항목의 화면에 없는 속성(id 등)은 그대로 돌려받습니다.
+
+```js
+{ key: 'models', label: '모델', type: 'list', itemLabel: 'name',
+  itemFields: [
+    { key: 'name', label: '이름', type: 'text' },
+    { key: 'enabled', label: '사용', type: 'toggle', default: true },
+    { key: 'tags', label: '태그', type: 'list', item: { type: 'text' } },
+  ] }
+```
 
 ## 데이터 형식
 
