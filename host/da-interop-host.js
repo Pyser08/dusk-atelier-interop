@@ -14,7 +14,6 @@ function createDAInteropHost({ risuai, selfName, storagePrefix = 'da_' } = {}) {
   const REG = 'da_interop_registry';
   const PATCH = 'da_interop_patch';
   const K = {
-    stash: storagePrefix + 'disabled_plugins',
     backups: storagePrefix + 'plugin_backups',
     categories: storagePrefix + 'plugin_categories',
   };
@@ -35,7 +34,7 @@ function createDAInteropHost({ risuai, selfName, storagePrefix = 'da_' } = {}) {
     set: (key, value) => R.pluginStorage.setItem(key, JSON.stringify(value)),
   };
 
-  async function readDB() { return (await R.getDatabase()) ?? {}; }
+  async function readDB() { return (await R.getDatabase(['plugins', 'etcData'])) ?? {}; }
   async function readEtc() { const db = await readDB(); return db.etcData ?? {}; }
   async function writeEtcEntry(bucket, id, value) {
     for (let i = 0; i < 4; i++) {
@@ -226,29 +225,15 @@ function createDAInteropHost({ risuai, selfName, storagePrefix = 'da_' } = {}) {
 
   async function listPlugins() {
     const db = await readDB();
-    const active = (db.plugins ?? []).map((p, i) => ({ ...p, enabled: true, order: i }));
-    const disabled = (await store.get(K.stash, [])).map((p) => ({ ...p, enabled: false, order: null }));
     const cats = await store.get(K.categories, {});
-    return [...active, ...disabled].map((p) => ({ ...p, category: cats[p.name] ?? '' }));
+    return (db.plugins ?? []).map((p, i) => ({ ...p, enabled: p.enabled !== false, order: i, category: cats[p.name] ?? '' }));
   }
 
-  // 끄기 = plugins 배열에서 빼서 pluginStorage에 보관, 켜기 = 되돌려 넣기
+  // 켜기/끄기 = 플러그인 항목의 enabled 필드
   async function setEnabled(name, on) {
-    requireWritable();
-    if (name === selfName) throw new Error('Dusk Atelier 자신은 끌 수 없습니다');
+    if (name === selfName && !on) throw new Error('Dusk Atelier 자신은 끌 수 없습니다');
     const db = await readDB();
-    const stash = await store.get(K.stash, []);
-    if (on) {
-      const p = stash.find((x) => x.name === name);
-      if (!p) return;
-      await writePlugins([...db.plugins, p], `켜기: ${name}`);
-      await store.set(K.stash, stash.filter((x) => x.name !== name));
-    } else {
-      const p = db.plugins.find((x) => x.name === name);
-      if (!p) return;
-      await store.set(K.stash, [...stash.filter((x) => x.name !== name), p]);
-      await writePlugins(db.plugins.filter((x) => x.name !== name), `끄기: ${name}`);
-    }
+    await writePlugins(db.plugins.map((p) => (p.name === name ? { ...p, enabled: on } : p)), `${on ? '켜기' : '끄기'}: ${name}`);
   }
 
   async function reorder(names) {
@@ -334,7 +319,6 @@ function createDAInteropHost({ risuai, selfName, storagePrefix = 'da_' } = {}) {
     return JSON.stringify({
       format: 'dusk-atelier-backup', v: 1, at: new Date().toISOString(),
       plugins: db.plugins ?? null,
-      disabled: await store.get(K.stash, []),
       categories: await store.get(K.categories, {}),
       interop: { registry: etc[REG] ?? {}, patch: etc[PATCH] ?? {} },
     }, null, 2);

@@ -21,7 +21,7 @@ const registerInterop = (() => {
   const clone = (v) => JSON.parse(JSON.stringify(v ?? null));
 
   async function readEtc() {
-    const db = await R.getDatabase();
+    const db = await R.getDatabase(['etcData']);
     return db?.etcData && typeof db.etcData === 'object' ? db.etcData : {};
   }
 
@@ -29,7 +29,7 @@ const registerInterop = (() => {
   // 지워지지 않도록 다시 읽어 확인하고, 사라졌으면 재시도한다.
   async function writeEntry(bucket, id, value) {
     for (let i = 0; i < 4; i++) {
-      const db = await R.getDatabase();
+      const db = await R.getDatabase(['etcData']);
       const etc = { ...(db?.etcData ?? {}) };
       etc[bucket] = { ...(etc[bucket] ?? {}), [id]: value };
       await R.setDatabaseLite({ etcData: etc });
