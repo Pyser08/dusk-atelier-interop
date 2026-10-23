@@ -2,7 +2,7 @@
 
 RisuAI 플러그인 **Dusk Atelier**가 다른 플러그인의 설정값·프리셋을 조절할 수 있게 하는 연동 규격입니다.
 
-- 생성기: GitHub Pages (`https://pyser08.github.io/dusk-atelier-interop/`)
+- 생성기:GitHub Pages (`https://pyser08.github.io/dusk-atelier-interop/`)
 - 공식 플러그인 API(`getDatabase`, `setDatabaseLite`, `pluginStorage`)만 사용합니다. 샌드박스 우회는 하지 않습니다.
 
 ## 왜 필요한가
