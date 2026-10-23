@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DA Interop 스니펫 생성기</title>
+<style>
+  :root{--bg:#141225;--card:#1b1930;--line:#3b3659;--soft:#2c2942;--text:#ecebf6;--sub:#9d99c1;--acc1:#4f7cf7;--acc2:#b36ee8;--err:#ff7a8a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+  main{max-width:880px;margin:0 auto;padding:28px 16px 60px}
+  h1{font-size:22px;margin:0 0 4px}
+  h1 span{background:linear-gradient(90deg,var(--acc1),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{color:var(--sub);margin:0 0 22px;word-break:keep-all}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
+  h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  h2::before{content:"";width:4px;height:15px;border-radius:2px;background:linear-gradient(180deg,var(--acc1),var(--acc2))}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px}
+  input,select,textarea{width:100%;background:var(--soft);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit}
+  textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--acc1);outline-offset:-1px}
+  .item{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#1f1c36}
+  .item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;color:var(--sub);font-size:12px}
+  button{font:inherit;border:0;border-radius:9px;padding:8px 14px;cursor:pointer;color:#fff;background:linear-gradient(90deg,#3d5bd4,#6a43d6);font-weight:700}
+  button.ghost{background:var(--soft);color:var(--text);border:1px solid var(--line);font-weight:500}
+  button.del{background:transparent;color:var(--err);padding:2px 6px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  pre{margin:0;max-height:480px;overflow:auto;background:#0f0d1d;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;white-space:pre}
+  .msg{font-size:12px;color:var(--sub)} .msg.err{color:var(--err)}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1><span>DA Interop v1</span> 스니펫 생성기</h1>
+  <p class="lead">플러그인 정보와 설정 항목을 입력하면 Dusk Atelier가 읽을 수 있는 등록 코드를 만들어 줍니다. 만든 코드를 플러그인 맨 아래에 붙이고 <code>apply</code> 안에 실제 적용 코드를 채우세요.</p>
+
+  <section>
+    <h2>플러그인 정보</h2>
+    <div class="grid">
+      <div><label>id (영소문자·숫자·.-_)</label><input id="id" placeholder="my-plugin"></div>
+      <div><label>표시 이름</label><input id="name" placeholder="My Plugin"></div>
+      <div><label>버전</label><input id="version" placeholder="1.0.0"></div>
+      <div><label>플러그인 name (//@name 값, 선택)</label><input id="pluginName" placeholder="my_plugin"></div>
+    </div>
+    <div style="margin-top:10px"><label>설명 (선택)</label><input id="description"></div>
+  </section>
+
+  <section>
+    <h2>설정 항목</h2>
+    <div id="fields"></div>
+    <button class="ghost" id="addField">+ 항목 추가</button>
+  </section>
+
+  <section>
+    <h2>프리셋 (선택)</h2>
+    <div id="presets"></div>
+    <button class="ghost" id="addPreset">+ 프리셋 추가</button>
+  </section>
+
+  <section>
+    <h2>결과</h2>
+    <div class="row" style="margin-bottom:10px">
+      <button id="gen">코드 만들기</button>
+      <button class="ghost" id="copy">복사</button>
+      <span class="msg" id="msg"></span>
+    </div>
+    <pre id="out">// 위 항목을 채우고 "코드 만들기"를 누르세요.</pre>
+  </section>
+</main>
+
+<template id="fieldTpl">
+  <div class="item field">
+    <div class="item-head"><span>항목</span><button class="del" type="button">삭제</button></div>
+    <div class="grid">
+      <div><label>key</label><input data-k="key" placeholder="temperature"></div>
+      <div><label>라벨</label><input data-k="label" placeholder="온도"></div>
+      <div><label>종류</label>
+        <select data-k="type">
+          <option value="toggle">켜기/끄기</option><option value="number">숫자</option><option value="slider">슬라이더</option>
+          <option value="select">선택지</option><option value="text" selected>글자</option><option value="textarea">긴 글</option><option value="color">색</option>
+        </select></div>
+      <div><label>기본값</label><input data-k="default"></div>
+      <div><label>그룹 (선택)</label><input data-k="group"></div>
+      <div class="num"><label>최소 / 최대 / 간격</label><div class="row" style="flex-wrap:nowrap"><input data-k="min"><input data-k="max"><input data-k="step"></div></div>
+      <div class="opt"><label>선택지 (쉼표 구분, 값:라벨 가능)</label><input data-k="options" placeholder="low:낮음, high:높음"></div>
+    </div>
+    <div style="margin-top:8px"><label>설명 (선택)</label><input data-k="description"></div>
+  </div>
+</template>
+
+<template id="presetTpl">
+  <div class="item preset">
+    <div class="item-head"><span>프리셋</span><button class="del" type="button">삭제</button></div>
+    <div><label>이름</label><input data-k="name" placeholder="기본"></div>
+    <div style="margin-top:8px"><label>값 (JSON, 항목 key 기준)</label><textarea data-k="values" rows="3" placeholder='{"temperature": 0.7}'></textarea></div>
+  </div>
+</template>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const MARK = '/*__DA_INTEROP_REGISTER__*/';
+let template = null;
+
+function addItem(tplId, boxId) {
+  const node = $('#' + tplId).content.firstElementChild.cloneNode(true);
+  $('.del', node).onclick = () => node.remove();
+  const type = $('[data-k=type]', node);
+  if (type) {
+    const sync = () => {
+      $('.num', node).classList.toggle('hide', !['number', 'slider'].includes(type.value));
+      $('.opt', node).classList.toggle('hide', type.value !== 'select');
+    };
+    type.onchange = sync; sync();
+  }
+  $('#' + boxId).append(node);
+  return node;
+}
+$('#addField').onclick = () => addItem('fieldTpl', 'fields');
+$('#addPreset').onclick = () => addItem('presetTpl', 'presets');
+addItem('fieldTpl', 'fields');
+
+const val = (el, k) => $(`[data-k=${k}]`, el).value.trim();
+function castDefault(type, raw) {
+  if (raw === '') return type === 'toggle' ? false : type === 'number' || type === 'slider' ? 0 : '';
+  if (type === 'toggle') return /^(true|1|on|y|yes|켜기)$/i.test(raw);
+  if (type === 'number' || type === 'slider') { const n = Number(raw); if (Number.isNaN(n)) throw new Error(`숫자가 아닌 기본값: ${raw}`); return n; }
+  return raw;
+}
+const numOrNull = (s) => (s === '' ? undefined : Number(s));
+
+function collect() {
+  const id = $('#id').value.trim();
+  if (!/^[a-z0-9][a-z0-9._-]{1,63}$/.test(id)) throw new Error('id는 영소문자·숫자로 시작하고 . - _ 만 쓸 수 있습니다 (2~64자)');
+  const fields = [...document.querySelectorAll('#fields .field')].map((el) => {
+    const key = val(el, 'key'); if (!key) throw new Error('key가 빈 항목이 있습니다');
+    const type = val(el, 'type');
+    const f = { key, label: val(el, 'label') || key, type, default: castDefault(type, val(el, 'default')) };
+    if (val(el, 'group')) f.group = val(el, 'group');
+    if (val(el, 'description')) f.description = val(el, 'description');
+    if (type === 'number' || type === 'slider') {
+      for (const k of ['min', 'max', 'step']) { const n = numOrNull(val(el, k)); if (n !== undefined) f[k] = n; }
+    }
+    if (type === 'select') {
+      f.options = val(el, 'options').split(',').map((s) => s.trim()).filter(Boolean).map((s) => {
+        const [v, ...l] = s.split(':'); return l.length ? { value: v.trim(), label: l.join(':').trim() } : { value: v, label: v };
+      });
+      if (!f.options.length) throw new Error(`${key}: 선택지를 입력하세요`);
+    }
+    return f;
+  });
+  const keys = fields.map((f) => f.key);
+  if (new Set(keys).size !== keys.length) throw new Error('key가 중복됩니다');
+  const presets = [...document.querySelectorAll('#presets .preset')].map((el) => {
+    const name = val(el, 'name'); if (!name) throw new Error('이름이 빈 프리셋이 있습니다');
+    let values; try { values = JSON.parse(val(el, 'values') || '{}'); } catch { throw new Error(`프리셋 "${name}"의 JSON이 올바르지 않습니다`); }
+    const unknown = Object.keys(values).filter((k) => !keys.includes(k));
+    if (unknown.length) throw new Error(`프리셋 "${name}"에 없는 key: ${unknown.join(', ')}`);
+    return { name, values };
+  });
+  return {
+    id, name: $('#name').value.trim() || id, version: $('#version').value.trim(),
+    pluginName: $('#pluginName').value.trim(), description: $('#description').value.trim(), fields, presets,
+  };
+}
+
+const ind = (s, n) => s.split('\n').map((l, i) => (i ? ' '.repeat(n) + l : l)).join('\n');
+function registerCode(c) {
+  const meta = ['id', 'name', 'version', 'pluginName', 'description'].filter((k) => c[k])
+    .map((k) => `  ${k}: ${JSON.stringify(c[k])},`).join('\n');
+  const keys = c.fields.map((f) => `    //   ${f.key}: ${JSON.stringify(f.default)},`).join('\n');
+  return `registerInterop({
+${meta}
+  fields: ${ind(JSON.stringify(c.fields, null, 2), 2)},
+  presets: ${ind(JSON.stringify(c.presets, null, 2), 2)},
+
+  // 지금 쓰는 값을 돌려주세요. Dusk Atelier 화면에 표시됩니다.
+  getValues: async () => ({
+    // TODO: 실제 설정 값으로 바꾸기
+${keys}
+  }),
+
+  // Dusk Atelier에서 [적용]하면 호출됩니다. 값을 저장하고 반영하세요.
+  apply: async (values, ctx) => {
+    // ctx.preset: 프리셋으로 적용했을 때 그 이름
+    // TODO: values를 플러그인 설정에 반영
+  },
+});
+`;
+}
+
+async function loadTemplate() {
+  if (template) return template;
+  const res = await fetch('interop-snippet.js', { cache: 'no-cache' });
+  if (!res.ok) throw new Error('interop-snippet.js를 불러오지 못했습니다 (GitHub Pages 주소로 열어 주세요)');
+  template = await res.text();
+  if (!template.includes(MARK)) throw new Error('템플릿 형식 오류');
+  return template;
+}
+
+const msg = (t, err) => { $('#msg').textContent = t; $('#msg').className = 'msg' + (err ? ' err' : ''); };
+$('#gen').onclick = async () => {
+  try {
+    const code = (await loadTemplate()).replace(MARK, registerCode(collect()));
+    $('#out').textContent = code; msg('만들었습니다');
+  } catch (e) { msg(e.message, true); }
+};
+$('#copy').onclick = async () => {
+  const t = $('#out').textContent;
+  if (!t.includes('registerInterop({')) return msg('먼저 코드를 만드세요', true);
+  try { await navigator.clipboard.writeText(t); msg('복사했습니다'); }
+  catch { const r = document.createRange(); r.selectNodeContents($('#out')); getSelection().removeAllRanges(); getSelection().addRange(r); msg('선택해 두었습니다. Ctrl+C로 복사하세요'); }
+};
+</script>
+</body>
+</html>
