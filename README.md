@@ -3,7 +3,7 @@
 RisuAI 플러그인 **Dusk Atelier**가 다른 플러그인의 설정값·프리셋을 조절할 수 있게 하는 연동 규격입니다.
 
 - 생성기:GitHub Pages (`https://pyser08.github.io/dusk-atelier-interop/`)
-- 공식 플러그인 API(`getDatabase`, `setDatabaseLite`, `pluginStorage`)만 사용합니다. 샌드박스 우회는 하지 않습니다.
+- 공식 플러그인 API(`pluginStorage` 등)만 사용합니다. 샌드박스 우회는 하지 않습니다.
 
 ## 왜 필요한가
 
@@ -45,30 +45,34 @@ registerInterop({
 
 ## 데이터 형식
 
-`etcData` 아래 두 곳을 씁니다. 각자 자기 `id` 항목만 바꾸고, 쓴 뒤 다시 읽어 확인합니다 (동시 쓰기 대비).
+`pluginStorage`에 둡니다. RisuAI의 `pluginStorage`는 모든 플러그인이 함께 쓰는 저장소라, 플러그인마다 키를 따로 써서 서로 덮어쓰지 않습니다.
+(`getDatabase`는 허용된 필드만 돌려주기 때문에 `etcData` 같은 곳은 쓸 수 없습니다.)
 
 ```
-etcData.da_interop_registry[id] = {
-  spec: 1, id, name, version, pluginName, description,
-  fields, presets, values, appliedRev, lastError, updatedAt
-}   // B 플러그인이 씀
-
-etcData.da_interop_patch[id] = { rev, values, preset, updatedAt }
-    // Dusk Atelier가 씀. B는 rev > appliedRev 이면 apply 후 appliedRev 갱신
+da_interop:reg:<id>   = { spec: 1, id, name, version, pluginName, description,
+                          fields, presets, values, appliedRev, lastError, updatedAt }   // B 플러그인이 씀
+da_interop:patch:<id> = { rev, values, preset, updatedAt }                              // Dusk Atelier가 씀
 ```
 
-B 플러그인은 3초마다(탭이 보일 때만) 패치를 확인합니다.
+B 플러그인은 3초마다(탭이 보일 때만) 패치를 확인하고, `rev > appliedRev`이면 `apply` 후 `appliedRev`를 올립니다.
+플러그인 자신의 설정을 `pluginStorage`에 저장할 때도 `<플러그인이름>:` 같은 접두어를 붙여 다른 플러그인과 겹치지 않게 하세요.
 
-## Dusk Atelier 쪽 (`host/da-interop-host.js`)
+## Dusk Atelier 쪽
+
+구현은 [Dusk-Atelier `src/data/plugins.js`](https://github.com/Pyser08/Dusk-Atelier/blob/main/src/data/plugins.js)에 있습니다.
 
 | 기능 | 조건 |
 |---|---|
-| 레지스트리 스캔, 자동 폼, 값 적용, 프리셋 전환, 적용 확인(`waitAck`), 정리(`pruneEntry`) | 항상 |
-| 카테고리 묶기, pluginStorage 보기, 업데이트 확인, 백업 내보내기 | 항상 |
-| 켜기/끄기, 순서 변경, 코드 교체, 백업 복원, 중복 제거 | `detectEnv().pluginsWritable === true` 일 때만 |
+| 연동 목록, 자동 폼, 값 적용, 프리셋, 적용 확인, 정리 | 항상 |
+| 카테고리 묶기, 저장소 보기, 업데이트 확인, 백업 내보내기 | 항상 |
+| 켜기/끄기, 순서 변경, 코드 교체, 백업 복원, 중복 정리 | `plugins` 쓰기가 되는 환경에서만 |
 
-`detectEnv()`는 Dusk Atelier 자신의 `versionOfPlugin`을 잠깐 바꿨다가 다시 읽어 `plugins` 쓰기가 되는지 확인하고, 원래 값으로 되돌립니다. 막힌 환경이면 위 표의 마지막 줄 기능을 비활성화하세요.
-`plugins`를 바꾸는 모든 작업은 직전 상태를 `pluginStorage`에 자동 백업합니다 (최근 5개).
+`plugins` 쓰기 가능 여부는 Dusk Atelier 자신의 `versionOfPlugin`을 바꿨다가 다시 읽어 확인하고 원래 값으로 되돌립니다.
+현재 RisuAI 본가와 이를 따르는 포크는 막혀 있어 마지막 줄 기능은 비활성화됩니다.
+
+## 테스트 플러그인
+
+`examples/da_interop_test.js`를 RisuAI에 설치하면 Dusk Atelier의 플러그인 → 연동 설정에 나타납니다. 이 플러그인의 설정 창에서 적용된 값과 기록을 확인할 수 있습니다.
 
 ## 라이선스
 

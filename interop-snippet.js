@@ -3,42 +3,28 @@
  * https://github.com/Pyser08/dusk-atelier-interop
  *
  * 이 블록을 플러그인 코드 맨 아래에 붙여 넣으세요.
- * 공식 플러그인 API(getDatabase / setDatabaseLite)만 사용합니다.
- * plugins 필드는 건드리지 않습니다.
+ * 공식 플러그인 API(pluginStorage)만 사용합니다.
  *
- * 저장 위치
- *   etcData.da_interop_registry[<id>]  ← 이 플러그인이 등록 (스키마·현재값)
- *   etcData.da_interop_patch[<id>]     ← Dusk Atelier가 기록 (적용할 값)
+ * 저장 위치 (pluginStorage, 모든 플러그인 공용)
+ *   da_interop:reg:<id>    ← 이 플러그인이 등록 (스키마·현재값)
+ *   da_interop:patch:<id>  ← Dusk Atelier가 기록 (적용할 값)
  * ============================================================ */
 const registerInterop = (() => {
   const SPEC = 1;
-  const REG = 'da_interop_registry';
-  const PATCH = 'da_interop_patch';
+  const REG = 'da_interop:reg:';
+  const PATCH = 'da_interop:patch:';
   const POLL_MS = 3000;
   const R = globalThis.risuai ?? globalThis.Risuai;
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const clone = (v) => JSON.parse(JSON.stringify(v ?? null));
-
-  async function readEtc() {
-    const db = await R.getDatabase(['etcData']);
-    return db?.etcData && typeof db.etcData === 'object' ? db.etcData : {};
+  // pluginStorage는 모든 플러그인이 함께 쓰는 저장소라 키 하나에 자기 항목만 둔다
+  async function readKey(key) {
+    try {
+      const raw = await R.pluginStorage.getItem(key);
+      return raw == null || raw === '' ? null : typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch { return null; }
   }
-
-  // etcData 안의 bucket[id]만 바꾼다. 다른 플러그인 항목과 동시에 쓰여도
-  // 지워지지 않도록 다시 읽어 확인하고, 사라졌으면 재시도한다.
-  async function writeEntry(bucket, id, value) {
-    for (let i = 0; i < 4; i++) {
-      const db = await R.getDatabase(['etcData']);
-      const etc = { ...(db?.etcData ?? {}) };
-      etc[bucket] = { ...(etc[bucket] ?? {}), [id]: value };
-      await R.setDatabaseLite({ etcData: etc });
-      await sleep(150 + Math.random() * 250);
-      const after = (await readEtc())[bucket]?.[id];
-      if (after && after.updatedAt === value.updatedAt) return true;
-    }
-    return false;
-  }
+  const writeKey = (key, value) => R.pluginStorage.setItem(key, JSON.stringify(value));
 
   function normalize(cfg) {
     if (!cfg || typeof cfg !== 'object') throw new Error('[DA Interop] 설정 객체가 필요합니다');
@@ -58,7 +44,7 @@ const registerInterop = (() => {
   }
 
   return async function registerInterop(rawCfg) {
-    if (!R?.getDatabase || !R?.setDatabaseLite) {
+    if (!R?.pluginStorage?.getItem) {
       console.warn('[DA Interop] 플러그인 API를 찾지 못해 등록을 건너뜁니다');
       return null;
     }
@@ -74,9 +60,9 @@ const registerInterop = (() => {
     };
 
     const publish = async (extra = {}) => {
-      const prev = (await readEtc())[REG]?.[cfg.id];
+      const prev = await readKey(REG + cfg.id);
       if (prev?.appliedRev) appliedRev = Math.max(appliedRev, prev.appliedRev);
-      return writeEntry(REG, cfg.id, {
+      return writeKey(REG + cfg.id, {
         spec: SPEC,
         id: cfg.id,
         name: cfg.name,
@@ -97,7 +83,7 @@ const registerInterop = (() => {
       if (busy) return;
       busy = true;
       try {
-        const patch = (await readEtc())[PATCH]?.[cfg.id];
+        const patch = await readKey(PATCH + cfg.id);
         if (!patch || !(patch.rev > appliedRev)) return;
         let lastError = null;
         try {
